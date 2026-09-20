@@ -2,14 +2,15 @@ use std::alloc::{
     Layout,
     alloc,
     dealloc,
+    realloc,
 };
 
 use std::ptr;
 
 pub struct MyVec<T> {
-    ptr: *mut T,
-    len: usize,
-    cap: usize,
+    pub ptr: *mut T,
+    pub len: usize,
+    pub cap: usize,
 }
 
 impl<T> MyVec<T> {
@@ -34,6 +35,41 @@ impl<T> MyVec<T> {
         }
     }
 
-    pub fn grow() -> Self {
+    pub fn grow(&mut self) {
+        // let current_cap = self.cap;
+        let new_capacity: usize = if self.cap == 0 {
+            4
+        } else {
+            self.cap * 2
+        };
+
+        let new_layout = Layout::array::<T>(new_capacity).unwrap();
+
+        let new_raw_ptr = if self.cap == 0 {
+            unsafe { alloc(new_layout) }
+        } else {
+            let old_layout = Layout::array::<T>(self.cap).unwrap();
+            unsafe { realloc(self.ptr as *mut u8, old_layout, new_layout.size()) }
+        };
+
+        if new_raw_ptr.is_null() {
+            std::alloc::handle_alloc_error(new_layout);
+        }
+
+        let ptr = new_raw_ptr as *mut T;
+
+        self.ptr = ptr;
+        self.cap = new_capacity;
+    }
+}
+
+impl<T> Drop for MyVec<T> {
+    fn drop(&mut self) {
+        if self.cap > 0 {
+            let layout = Layout::array::<T>(self.cap).unwrap();
+            unsafe {
+                dealloc(self.ptr as *mut u8, layout);
+            }
+        }
     }
 }
