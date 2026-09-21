@@ -67,12 +67,24 @@ impl<T> MyVec<T> {
             self.grow();
         }
 
-        let last_index = self.len - 1;
+        let last_index = self.len;
 
         let target_ptr = unsafe { self.ptr.add(last_index) };
 
         unsafe { std::ptr::write(target_ptr, value) };
         self.len += 1;
+    }
+
+    pub fn pop(&mut self) -> Option<T> {
+        if self.len == 0 {
+            return None;
+        }
+
+        let last_index = self.len - 1;
+
+        self.len -= 1;
+
+        unsafe { Some(std::ptr::read(self.ptr.add(last_index))) }
     }
 
     pub fn get_imm(&self, index: usize) -> Option<&T> {
