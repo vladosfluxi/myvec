@@ -5,12 +5,17 @@ use std::alloc::{
     realloc,
 };
 
-use std::ptr;
+use std::{
+    mem::ManuallyDrop,
+    ptr,
+};
 
 use std::ops::{
     Index,
     IndexMut,
 };
+
+use std::convert::From;
 
 pub struct MyVec<T> {
     pub ptr: *mut T,
@@ -138,5 +143,25 @@ impl<T> IndexMut<usize> for MyVec<T> {
         }
 
         unsafe { &mut *self.ptr.add(index) }
+    }
+}
+
+impl<T, const N: usize> From<[T; N]> for MyVec<T> {
+    fn from(values: [T; N]) -> Self {
+        let size = N;
+        let values = ManuallyDrop::new(values);
+
+        let mut vec: MyVec<T> = MyVec::with_capacity(size);
+
+        unsafe {
+            let src_len = values.len();
+            let src_ptr = values.as_ptr();
+
+            ptr::copy_nonoverlapping(src_ptr, vec.ptr, src_len);
+        }
+
+        vec.len = size;
+
+        vec
     }
 }
