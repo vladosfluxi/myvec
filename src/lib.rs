@@ -61,6 +61,35 @@ impl<T> MyVec<T> {
         self.ptr = ptr;
         self.cap = new_capacity;
     }
+
+    pub fn push(&mut self, value: T) {
+        if self.len == 0 || self.cap <= self.len {
+            self.grow();
+        }
+
+        let last_index = self.len - 1;
+
+        let target_ptr = unsafe { self.ptr.add(last_index) };
+
+        unsafe { std::ptr::write(target_ptr, value) };
+        self.len += 1;
+    }
+
+    pub fn get_imm(&self, index: usize) -> Option<&T> {
+        if index >= self.len {
+            return None;
+        }
+
+        unsafe { Some(&*self.ptr.add(index)) }
+    }
+
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+        if index >= self.len {
+            return None;
+        }
+
+        unsafe { Some(&mut *self.ptr.add(index)) }
+    }
 }
 
 impl<T> Drop for MyVec<T> {
