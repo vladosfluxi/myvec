@@ -7,6 +7,11 @@ use std::alloc::{
 
 use std::ptr;
 
+use std::ops::{
+    Index,
+    IndexMut,
+};
+
 pub struct MyVec<T> {
     pub ptr: *mut T,
     pub len: usize,
@@ -112,5 +117,26 @@ impl<T> Drop for MyVec<T> {
                 dealloc(self.ptr as *mut u8, layout);
             }
         }
+    }
+}
+
+impl<T> Index<usize> for MyVec<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        if index + 1 > self.len {
+            panic!("Index: {} out of bounds", index);
+        }
+        unsafe { &*self.ptr.add(index) }
+    }
+}
+
+impl<T> IndexMut<usize> for MyVec<T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        if index > self.len - 1 {
+            panic!("Index: {} out of bounds", index);
+        }
+
+        unsafe { &mut *self.ptr.add(index) }
     }
 }
