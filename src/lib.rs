@@ -10,6 +10,11 @@ use std::{
     ptr,
 };
 
+use std::iter::{
+    IntoIterator,
+    Iterator,
+};
+
 use std::ops::{
     Index,
     IndexMut,
@@ -21,6 +26,12 @@ pub struct MyVec<T> {
     pub ptr: *mut T,
     pub len: usize,
     pub cap: usize,
+}
+
+pub struct IntoIter<T> {
+    ptr: *const T,
+    end: *const T,
+    _buf: MyVec<T>,
 }
 
 impl<T> MyVec<T> {
@@ -117,6 +128,7 @@ impl<T> MyVec<T> {
 impl<T> Drop for MyVec<T> {
     fn drop(&mut self) {
         if self.cap > 0 {
+            while let Some(_) = self.pop() {}
             let layout = Layout::array::<T>(self.cap).unwrap();
             unsafe {
                 dealloc(self.ptr as *mut u8, layout);
@@ -138,7 +150,7 @@ impl<T> Index<usize> for MyVec<T> {
 
 impl<T> IndexMut<usize> for MyVec<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        if index > self.len - 1 {
+        if index + 1 > self.len {
             panic!("Index: {} out of bounds", index);
         }
 
@@ -163,5 +175,38 @@ impl<T, const N: usize> From<[T; N]> for MyVec<T> {
         vec.len = size;
 
         vec
+    }
+}
+
+impl<T> std::iter::IntoIterator for MyVec<T> {
+    type Item = T;
+    type IntoIter = IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let _buf = self;
+
+        let ptr = _buf.ptr;
+        let end = unsafe { _buf.ptr.add(_buf.len) };
+
+        IntoIter {
+            ptr,
+            end,
+            _buf,
+        }
+    }
+}
+
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.ptr == self.end {
+            return None;
+        }
+        unsafe {
+            let old_ptr = self.ptr;
+            self.ptr = self.ptr.add(1);
+
+            Some(std::ptr::read(old_ptr))
+        }
     }
 }
