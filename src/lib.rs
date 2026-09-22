@@ -5,6 +5,11 @@ use std::alloc::{
     realloc,
 };
 
+use std::fmt::{
+    self,
+    Debug,
+};
+
 use std::{
     mem::ManuallyDrop,
     ptr,
@@ -34,6 +39,17 @@ pub struct IntoIter<T> {
     ptr: *const T,
     end: *const T,
     _buf: MyVec<T>,
+}
+
+pub struct IterMut<'a, T> {
+    ptr: *mut T,
+    end: *mut T,
+    _marker: std::marker::PhantomData<&'a mut T>,
+}
+pub struct Iter<'a, T> {
+    ptr: *const T,
+    end: *const T,
+    _marker: std::marker::PhantomData<&'a T>,
 }
 
 impl<T> MyVec<T> {
@@ -124,6 +140,27 @@ impl<T> MyVec<T> {
         }
 
         unsafe { Some(&mut *self.ptr.add(index)) }
+    }
+
+    pub fn iter(&self) -> Iter<'_, T> {
+        let ptr = self.ptr as *const T;
+        let end = unsafe { self.ptr.add(self.len) as *const T };
+
+        Iter {
+            ptr,
+            end,
+            _marker: std::marker::PhantomData,
+        }
+    }
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
+        let ptr = self.ptr as *mut T;
+        let end = unsafe { self.ptr.add(self.len) as *mut T };
+
+        IterMut {
+            ptr,
+            end,
+            _marker: std::marker::PhantomData,
+        }
     }
 }
 
@@ -223,5 +260,65 @@ impl<T> Deref for MyVec<T> {
 impl<T> DerefMut for MyVec<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { std::slice::from_raw_parts_mut(self.ptr, self.len) }
+    }
+}
+
+impl<T> FromIterator<T> for MyVec<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let mut store = MyVec::new();
+
+        for i in iter {
+            store.push(i);
+        }
+        store
+    }
+}
+
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.ptr == self.end {
+            return None;
+        }
+        unsafe {
+            let old_ptr = self.ptr;
+            self.ptr = self.ptr.add(1);
+
+            Some(&*old_ptr)
+        }
+    }
+}
+
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = &'a T;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.ptr == self.end {
+            return None;
+        }
+        unsafe {
+            let old_ptr = self.ptr;
+            self.ptr = self.ptr.add(1);
+
+            Some(&mut *old_ptr)
+        }
+    }
+}
+
+impl<T: Debug> std::fmt::Debug for MyVec<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list().entries(self.iter()).finish()
+    }
+}
+
+impl<T: Clone> std::clone::Clone for MyVec<T> {
+    fn clone(&self) -> Self {
+        let mut vec: MyVec<T> = MyVec::with_capacity(self.len);
+
+        for i in self.iter() {
+            vec.push((*i).clone());
+        }
+
+        vec
     }
 }
