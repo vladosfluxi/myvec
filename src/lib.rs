@@ -16,6 +16,8 @@ use std::iter::{
 };
 
 use std::ops::{
+    Deref,
+    DerefMut,
     Index,
     IndexMut,
 };
@@ -208,5 +210,18 @@ impl<T> Iterator for IntoIter<T> {
 
             Some(std::ptr::read(old_ptr))
         }
+    }
+}
+
+impl<T> Deref for MyVec<T> {
+    type Target = [T];
+    fn deref(&self) -> &Self::Target {
+        unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
+    }
+}
+
+impl<T> DerefMut for MyVec<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { std::slice::from_raw_parts_mut(self.ptr, self.len) }
     }
 }
