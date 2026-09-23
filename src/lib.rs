@@ -5,6 +5,11 @@ use std::alloc::{
     realloc,
 };
 
+use std::ops::{
+    Range,
+    RangeFull,
+};
+
 use std::fmt::{
     self,
     Debug,
@@ -320,5 +325,40 @@ impl<T: Clone> std::clone::Clone for MyVec<T> {
         }
 
         vec
+    }
+}
+
+impl<T> Extend<T> for MyVec<T> {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        for i in iter {
+            self.push(i);
+        }
+    }
+}
+
+impl<T> Index<Range<usize>> for MyVec<T> {
+    type Output = [T];
+
+    fn index(&self, index: Range<usize>) -> &Self::Output {
+        &self[..][index]
+    }
+}
+
+impl<T> IndexMut<RangeFull> for MyVec<T> {
+    fn index_mut(&mut self, index: RangeFull) -> &mut Self::Output {
+        &mut **self
+    }
+}
+
+impl<T> Index<RangeFull> for MyVec<T> {
+    type Output = [T];
+    fn index(&self, index: RangeFull) -> &Self::Output {
+        &**self
+    }
+}
+
+impl<T> IndexMut<Range<usize>> for MyVec<T> {
+    fn index_mut(&mut self, index: Range<usize>) -> &mut Self::Output {
+        &mut (**self)[index]
     }
 }
